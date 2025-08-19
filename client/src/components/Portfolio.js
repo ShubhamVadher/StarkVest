@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 
 const API_KEY = process.env.REACT_APP_STOCK_API_KEY;
@@ -11,19 +11,31 @@ export const Portfolio = () => {
   const [livePrices, setLivePrices] = useState({});
   const [unrealisedPL, setUnrealisedPL] = useState(0);
 
+  const isMounted = useRef(true); // prevent state updates after unmount
+
   // Fetch portfolio
   useEffect(() => {
+    isMounted.current = true;
+    const controller = new AbortController();
+
     const fetchPortfolio = async () => {
       try {
-        const res = await axios.get('/getstocks');
-        if (res.status === 200) {
+        const res = await axios.get('/getstocks', { signal: controller.signal });
+        if (res.status === 200 && isMounted.current) {
           setStocks(res.data.stocks || []);
         }
       } catch (err) {
-        console.error("Failed to load portfolio:", err);
+        if (err.name !== "CanceledError" && err.name !== "AbortError") {
+          console.error("Failed to load portfolio:", err);
+        }
       }
     };
     fetchPortfolio();
+
+    return () => {
+      isMounted.current = false;
+      controller.abort();
+    };
   }, []);
 
   // Clean company name for API
@@ -40,11 +52,17 @@ export const Portfolio = () => {
   // Fetch NSE/BSE prices
   const fetchLivePrice = async (company) => {
     const cleaned = cleanCompanyName(company);
+    const controller = new AbortController();
+
     try {
-      const res = await axios.get(`https://stock.indianapi.in/stock?name=${encodeURIComponent(cleaned)}`, {
-        headers: { 'x-api-key': API_KEY }
-      });
-      if (!res.data.error) {
+      const res = await axios.get(
+        `https://stock.indianapi.in/stock?name=${encodeURIComponent(cleaned)}`,
+        {
+          headers: { 'x-api-key': API_KEY },
+          signal: controller.signal
+        }
+      );
+      if (!res.data.error && isMounted.current) {
         setLivePrices(prev => ({
           ...prev,
           [company]: {
@@ -55,8 +73,12 @@ export const Portfolio = () => {
         setSelectedExchange(prev => ({ ...prev, [company]: 'NSE' }));
       }
     } catch (err) {
-      console.error(`Live price fetch failed for ${company}:`, err);
+      if (err.name !== "CanceledError" && err.name !== "AbortError") {
+        console.error(`Live price fetch failed for ${company}:`, err);
+      }
     }
+
+    return () => controller.abort();
   };
 
   // Calculate unrealised P/L whenever prices, stocks, or exchange selection change
@@ -72,7 +94,7 @@ export const Portfolio = () => {
         total += pl;
       }
     });
-    setUnrealisedPL(total);
+    if (isMounted.current) setUnrealisedPL(total);
   }, [livePrices, stocks, selectedExchange]);
 
   const handleBuySell = async (type, company) => {

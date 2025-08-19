@@ -6,7 +6,7 @@ const get_token=require('./JWT/gentoken')
 const cooki_parser=require('cookie-parser');
 const Portfolio=require('./models/stocks');
 const isloggedin=require('./middleware/isloggedin');
-// const puppeteer = require('puppeteer');
+const axios = require("axios");
 const fs = require('fs');
 const path = require('path');
 
@@ -46,7 +46,7 @@ app.post('/signin', async (req, res) => {
 });
 
 app.get('/logout', isloggedin, (req, res) => {
-  res.clearCookie('token'); // Correct cookie name
+  res.clearCookie('token'); 
   return res.status(200).send('Logged out successfully');
 });
 
@@ -64,25 +64,6 @@ app.post('/editfunds',isloggedin,async(req,res)=>{
 })
 
 
-// async function getMarketStatusIST() {
-//   try {
-//     const browser = await puppeteer.launch({ headless: true });
-//     const page = await browser.newPage();
-//     await page.goto('https://www.bseindia.com/markets.html', { waitUntil: 'networkidle2' });
-
-//     // Wait for the element to load (adjust selector if needed)
-//     await page.waitForSelector('.topdatearea strong');
-
-//     const status = await page.$eval('.topdatearea strong', el => el.textContent.trim());
-
-//     await browser.close();
-//     console.log(status);
-//     return status==="Open"?true:false;
-
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// }
 
 app.post('/orderbuy', isloggedin,order, async (req, res) => {
   
@@ -161,7 +142,7 @@ app.post('/ordersell', isloggedin,order, async (req, res) => {
 
   const { quantity } = req.body.data;
   const stock = req.body.stock;
-  const price = parseFloat(req.body.price); // Current price from frontend
+  const price = parseFloat(req.body.price); 
   const myuser = req.user;
 
   const parsedQuantity = parseInt(quantity);
@@ -230,6 +211,116 @@ app.get('/getstocks', isloggedin, async (req, res) => {
     res.status(500).json({ message: "Failed to fetch portfolio" });
   }
 });
+
+app.post("/aisuggest", isloggedin,async (req, res) => {
+  try {
+    const { action, budget } = req.body;
+
+    if (!action) {
+      return res.status(400).json({ error: "Missing 'action' in body" });
+    }
+
+  
+    const styleGuide = `
+Return ONLY the list lines as requested. No intro, no bullets, no disclaimers.
+Limit adjectives. Keep each line terse.
+    `.trim();
+
+    let prompt = "";
+
+    if (action === "buy") {
+      if (!budget || Number(budget) <= 0) {
+        return res.status(400).json({ error: "Valid 'budget' is required for action=buy" });
+      }
+      
+      prompt = `
+You are an investing assistant for Indian equities/ETFs.
+Task: Suggest a compact plan for ₹${budget}.
+${styleGuide}
+
+Output exactly 5 lines. Format per line:
+Name | Sector | Allocation%
+
+Allocations must sum to 100%.
+Do not include prices or explanations beyond the format.
+      `.trim();
+    } else if (action === "sell") {
+      
+      let portfolioSummary = "None";
+      if (req.user && req.user._id) {
+        const portfolio = await Portfolio.findOne({ user: req.user._id }).lean();
+        if (portfolio && Array.isArray(portfolio.stocks) && portfolio.stocks.length) {
+          portfolioSummary = portfolio.stocks
+            .map(s => `${s.company} | Qty:${s.quantity} | Avg₹:${s.average_price}`)
+            .join("\n");
+        }
+      }
+
+      if (portfolioSummary === "None") {
+        
+        return res.json({ answer: "No saved portfolio found." });
+      }
+
+      prompt = `
+You are an investing assistant for Indian equities.
+Task: From the portfolio, identify up to 5 positions to SELL or TRIM.
+${styleGuide}
+
+Portfolio:
+${portfolioSummary}
+
+Output up to 5 lines. Format per line:
+Company | Action(SELL/TRIM/HOLD) | Reason(<=6 words)
+      `.trim();
+    } else if (action === "sectors") {
+  
+  prompt = `
+You are an investing assistant for Indian markets.
+Task: List top 5 sectors to focus on right now.
+${styleGuide}
+
+Output exactly 5 lines.
+Format per line:
+Sector | 1–2 reasons(<=6 words) | Example Company
+
+Example Company must be an actual large-cap or mid-cap Indian stock from that sector.
+No intro, no outro, no extra commentary.
+  `.trim();
+}else {
+      return res.status(400).json({ error: "Invalid 'action'. Use 'buy' | 'sell' | 'sectors'." });
+    }
+
+    
+    const aiRes = await axios.post(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      {
+        contents: [
+          { role: "user", parts: [{ text: prompt }] }
+        ]
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY, // put in .env
+        },
+        timeout: 20000
+      }
+    );
+
+    const answer =
+      aiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+      "No response";
+
+    return res.json({ answer });
+  } catch (err) {
+    console.error("Error in /aisuggest:", err.response?.data || err.message);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      details: err.response?.data || err.message,
+    });
+  }
+});
+
 
 app.get('/userdata',isloggedin,async(req,res)=>{
   const myuser=req.user;

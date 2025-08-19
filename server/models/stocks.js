@@ -14,12 +14,12 @@ const stockSchema = new mongoose.Schema({
     required: true
   },
   
-}, { _id: false }); // optional: don't create _id for each stock entry
+}, { _id: false }); 
 
 const portfolioSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'user', // Make sure your User model is exported as 'User'
+    ref: 'user', 
     required: true
   },
   stocks: [stockSchema]

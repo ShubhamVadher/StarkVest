@@ -12,11 +12,9 @@ export const Details = () => {
   const stockData = location.state?.stockData;
 
   const [tradeForm, setTradeForm] = useState({
-    action: "buy",     // default radio
-    exchange: "NSE",   // default dropdown
-    quantity:0,
-    
-    // stock:stockData.companyName
+    action: "buy",
+    exchange: "NSE",
+    quantity: 0,
   });
 
   const handleFormChange = (e) => {
@@ -29,74 +27,58 @@ export const Details = () => {
 
   if (!stockData) return <p className='text-white'>No stock data found.</p>;
 
-  const handleSubmit=async(e)=>{
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if(tradeForm.quantity<=0){
-      window.alert("Plz enter a valid quantity for Stocks You want to BUY/SELL");
+    if (tradeForm.quantity <= 0) {
+      window.alert("Please enter a valid quantity for Stocks you want to BUY/SELL");
       return;
     }
-    const con=window.confirm(`Are you sure you want to ${tradeForm.action} ${tradeForm.quantity} stocks of ${stockData.companyName}`)
-    if(con){
-      try{
-      
+    const con = window.confirm(`Are you sure you want to ${tradeForm.action} ${tradeForm.quantity} stocks of ${stockData.companyName}`);
+    if (con) {
+      try {
         const price = parseFloat(
-  tradeForm.exchange === "NSE"
-    ? stockData.currentPrice.NSE
-    : stockData.currentPrice.BSE
-);
+          tradeForm.exchange === "NSE"
+            ? stockData.currentPrice.NSE
+            : stockData.currentPrice.BSE
+        );
 
-        if(tradeForm.action==="buy"){
-          const response=await axios.post('/orderbuy',{data:tradeForm,stock:stockData.companyName,price});
-          if(response.status===200){
+        if (tradeForm.action === "buy") {
+          const response = await axios.post('/orderbuy', { data: tradeForm, stock: stockData.companyName, price });
+          if (response.status === 200) {
             window.alert(response.data.message);
             const quantity = parseInt(tradeForm.quantity, 10);
             if (!isNaN(price) && !isNaN(quantity)) {
               const cost = price * quantity;
-              setFund(prev => Number(prev) - cost); 
+              setFund(prev => Number(prev) - cost);
             }
-
-          }
-          else{
-            // console.log(response.data.message);
+          } else {
             window.alert(response.data.message);
           }
-        }
-        else{
-          const response=await axios.post('/ordersell',{data:tradeForm,stock:stockData.companyName,price});
-          if(response.status===200){
+        } else {
+          const response = await axios.post('/ordersell', { data: tradeForm, stock: stockData.companyName, price });
+          if (response.status === 200) {
             window.alert(response.data.message);
             const quantity = parseInt(tradeForm.quantity, 10);
             if (!isNaN(price) && !isNaN(quantity)) {
               const cost = price * quantity;
-              setFund(prev => Number(prev) + cost); 
+              setFund(prev => Number(prev) + cost);
             }
-
-          }
-          else{
-            // console.log(response.data.message);
+          } else {
             window.alert(response.data.message);
           }
         }
-
-        
+      } catch (err) {
+        console.log(err);
       }
-      catch(err){
-        console.log(err)
-      }
-
     }
-  }
+  };
 
-
-
-  // 🧠 Normalize function for comparison
   const normalize = str =>
     str?.toLowerCase().replace(/\bltd\b|\blimited\b|\./g, '').trim();
 
   const baseName = normalize(stockData.companyName);
 
-  // ✅ Try best match for peerCompanyList
   const peerSelf = stockData.companyProfile?.peerCompanyList?.find(peer =>
     normalize(peer.companyName).includes(baseName)
   );
@@ -104,7 +86,6 @@ export const Details = () => {
   const marketCap = peerSelf?.marketCap;
   const peRatio = peerSelf?.priceToEarningsValueRatio;
 
-  // ✅ EPS Calculation
   const incomeData = stockData.financials?.[0]?.stockFinancialMap?.INC || [];
   const netIncome = parseFloat(
     incomeData.find(item => item.key === "NetIncome")?.value
@@ -113,10 +94,8 @@ export const Details = () => {
     incomeData.find(item => item.key === "DilutedWeightedAverageShares")?.value
   );
   const eps = netIncome && shares ? (netIncome / shares).toFixed(2) : null;
-  const navigate=useNavigate;
-  // const buyStocks = () => {
-  //   navigate('/buy', { state: { stockData } });
-  // };
+  const navigate = useNavigate;
+
   return (
     <div className='details-page'>
       <h2 className='details-title'>{stockData.companyName}</h2>
@@ -162,7 +141,7 @@ export const Details = () => {
           </label>
         </div>
 
-        <div class='form-group'>
+        <div className='form-group'>
           <label htmlFor="exchange" className="trade-label">Select Exchange:</label>
           <select
             name="exchange"
@@ -177,25 +156,23 @@ export const Details = () => {
         </div>
 
         <div className='form-group'>
-            <label htmlFor="quantity" className='trade-label'>Quantity:</label> {/* Added label for quantity */}
-            <input
-                type="number"
-                className='trade-input'
-                name="quantity"
-                id="quantity"
-                value={tradeForm.quantity}
-                required
-                onChange={handleFormChange}
-                min="1"
-            />
+          <label htmlFor="quantity" className='trade-label'>Quantity:</label>
+          <input
+            type="number"
+            className='trade-input'
+            name="quantity"
+            id="quantity"
+            value={tradeForm.quantity}
+            required
+            onChange={handleFormChange}
+            min="1"
+          />
         </div>
 
         <button type="submit" className="trade-submit-button">
           Submit
         </button>
       </form>
-
-
     </div>
   );
 };

@@ -23,13 +23,13 @@ const order = async (req, res, next) => {
     // month=4;
     // year=2025;
     
-    //Weekend check                                   
+    //Weekend                                 
     if (dayofweek ==0 || dayofweek ==6) {
         return res.status(201).json({ message: 'Orders cannot be processed on weekends.' });
     }
     const date=year.toString()+"-"+month.toString()+"-"+day.toString();
 
-    //Holiday check
+    //Holiday
     if (HOLIDAYS.includes(date)) {
       return res.status(201).json({ message: 'Today is a public holiday. Orders cannot be processed.' });
     }

@@ -13,7 +13,7 @@ export const Navbar = () => {
   const location = useLocation();
 
   const [displayname, setdisplayname] = useState("");
-const { fund, setFund } = useUser();
+  const { fund, setFund } = useUser();
 
   const [formdata, setformdata] = useState({ funds: 0, company: "" });
   const [suggestions, setSuggestions] = useState([]);
@@ -21,10 +21,8 @@ const { fund, setFund } = useUser();
 
   const searchRef = useRef(null);
 
-  // Utility: Clean company name by removing common suffixes not accepted by API
   const cleanCompanyName = (name) => {
     let cleaned = name.toLowerCase();
-
     const patternsToRemove = [
       /\s+ltd\.?$/,
       /\s+limited$/,
@@ -39,11 +37,9 @@ const { fund, setFund } = useUser();
       /\s+co\.?$/,
       /\s+company$/,
     ];
-
     patternsToRemove.forEach((pattern) => {
       cleaned = cleaned.replace(pattern, '');
     });
-
     return cleaned.trim();
   };
 
@@ -63,7 +59,6 @@ const { fund, setFund } = useUser();
             email: user.email,
             name: getDisplayName(),
           }, { withCredentials: true });
-
           setdisplayname(response.data.name);
           setFund(response.data.fund);
         } catch (err) {
@@ -93,7 +88,6 @@ const { fund, setFund } = useUser();
         setSuggestions([]);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -117,13 +111,12 @@ const { fund, setFund } = useUser();
   const handleChange = (e) => {
     const { name, value } = e.target;
     setformdata(prev => ({ ...prev, [name]: value }));
-
     if (name === "company") {
       const input = value.toLowerCase();
       const filtered = companyList.filter(c =>
         c.name.toLowerCase().startsWith(input) ||
         c.symbol.toLowerCase().startsWith(input)
-      ).slice(0, 5); // top 5 suggestions
+      ).slice(0, 5);
       setSuggestions(filtered);
     }
   };
@@ -151,22 +144,15 @@ const { fund, setFund } = useUser();
 
   const searchCompany = async (e) => {
     e.preventDefault();
-
     const cleanedCompany = cleanCompanyName(formdata.company);
-
     if (!cleanedCompany) {
       window.alert("Please enter a valid company name.");
       return;
     }
-
-    // console.log('Searching company:', cleanedCompany);
-    // console.log('Using API KEY:', API_KEY);
-
     try {
       const response = await axios.get(`https://stock.indianapi.in/stock?name=${encodeURIComponent(cleanedCompany)}`, {
         headers: { 'x-api-key': API_KEY },
       });
-
       if (response.data.error) {
         window.alert(response.data.error);
       } else {
@@ -182,8 +168,7 @@ const { fund, setFund } = useUser();
 
   return (
     <div className="navbar-container">
-      <Link to="/" className="navbar-logo">💹 STARKVEST</Link>
-
+      <Link to="/" className="navbar-logo">STARKVEST</Link>
       <div className="nav-links">
         <Link to="/about" className={isActive('/about') ? 'active' : ''}>About</Link>
         <Link to="/contact" className={isActive('/contact') ? 'active' : ''}>Contact</Link>
@@ -191,14 +176,12 @@ const { fund, setFund } = useUser();
           <Link to="/portfolio" className={isActive('/portfolio') ? 'active' : ''}>Portfolio</Link>
         )}
       </div>
-
       <div className="nav-auth">
         {isAuthenticated ? (
           <>
-          <Link to="/profile" className="username"><span className="username">👤 {displayname}</span></Link>
-            
-            <span className="funds">💰 ₹{Number(fund).toFixed(2)}</span>
-
+            <Link to="/profile" className="username"><span className="username">{displayname}</span></Link>
+            <Link to='/ai' className='AI text-white'>Get Ai Suggesions</Link>
+            <span className="funds">₹{Number(fund).toFixed(2)}</span>
             <form onSubmit={searchCompany} className="search-form" autoComplete="off" ref={searchRef}>
               <input
                 name='company'
@@ -209,7 +192,6 @@ const { fund, setFund } = useUser();
                 autoComplete="off"
               />
               <button type='submit'>Search</button>
-
               {suggestions.length > 0 && (
                 <ul className="suggestions-dropdown">
                   {suggestions.map((item, index) => (
@@ -229,7 +211,6 @@ const { fund, setFund } = useUser();
                 </ul>
               )}
             </form>
-
             <form onSubmit={handleSubmit} className="fund-edit-form">
               <input
                 name="funds"

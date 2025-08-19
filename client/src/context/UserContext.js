@@ -4,7 +4,7 @@ import { createContext, useContext, useState } from 'react';
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
-  const [fund, setFund] = useState(0); // Only managing funds
+  const [fund, setFund] = useState(0);
 
   return (
     <UserContext.Provider value={{ fund, setFund }}>

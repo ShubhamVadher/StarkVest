@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useAuth0 } from "@auth0/auth0-react";
 import { jwtDecode } from "jwt-decode";
 import { Link } from 'react-router-dom';
-import './Home.css'; // Link to the external CSS file
+import './Home.css';
 
 export const Home = () => {
-  const { isAuthenticated,loginWithRedirect } = useAuth0();
+  const { isAuthenticated, loginWithRedirect } = useAuth0();
   const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
